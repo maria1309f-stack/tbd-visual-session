@@ -1,12 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
-import { allQuestions, briefSections, isAnswered, isQuestionVisible, type Question } from "../_shared/brief-config.ts";
-import { MAX_FILES, publicCode, randomToken, tokenHash, validateAttachment } from "../_shared/validation.ts";
+import { allQuestions, briefSections, isAnswered, isQuestionVisible, type Question } from "./brief-config.ts";
+import { MAX_FILES, publicCode, randomToken, tokenHash, validateAttachment } from "./validation.ts";
 
 const BUCKET = "brief-attachments";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const EDIT_TOKEN_SECRET = Deno.env.get("EDIT_TOKEN_SECRET") ?? "";
+const EDIT_TOKEN_SECRET = Deno.env.get("EDIT_TOKEN_SECRET") || SUPABASE_SERVICE_ROLE_KEY;
 const APP_URLS = (Deno.env.get("APP_URL") ?? "").split(",").map((value) => value.trim().replace(/\/$/, "")).filter(Boolean);
 const service = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -53,6 +53,12 @@ function allowedOrigin(request: Request) {
   if (!origin) return APP_URLS[0] ?? "*";
   if (origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:")) return origin;
   if (APP_URLS.includes(origin)) return origin;
+  if (!APP_URLS.length) {
+    try {
+      const host = new URL(origin).hostname;
+      if (host.endsWith(".bolt.host") || host.endsWith(".netlify.app") || host.endsWith(".supabase.co")) return origin;
+    } catch { /* invalid origin */ }
+  }
   return "";
 }
 
